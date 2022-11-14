@@ -125,6 +125,31 @@ app.post("/messages", async (req, res) => {
   }
 });
 
+app.get("/messages", async (req, res) => {
+  const { limit } = req.query;
+  const { user } = req.headers;
+
+  try {
+    let messages = [];
+    if (limit) {
+      messages = await collectionMessages
+        .find({}, { sort: { time: -1 }, limit: parseInt(limit) })
+        .toArray();
+    } else {
+      messages = await collectionMessages
+        .find({}, { sort: { time: -1 } })
+        .toArray();
+    }
+    messages = messages.filter(
+      (m) => m.from === user || m.to === user || m.to === "Todos"
+    );
+    res.send(messages);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
+  }
+});
+
 app.listen(process.env.PORT, () =>
   console.log(`Server running in port: ${process.env.PORT}`)
 );
