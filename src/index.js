@@ -150,6 +150,56 @@ app.get("/messages", async (req, res) => {
   }
 });
 
+app.post("/status", async (req, res) => {
+  const { user } = req.headers;
+
+  try {
+    const participantExists = await collectionParticipants.findOne({
+      name: user,
+    });
+    if (!participantExists) {
+      res.sendStatus(404);
+      return;
+    }
+
+    await collectionParticipants.updateOne(
+      {
+        name: user,
+      },
+      {
+        $set: {
+          lastStatus: Date.now(),
+        },
+      }
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
+  }
+});
+
+setInterval(async () => {
+  const day = dayjs().format("HH:mm:ss");
+  const participantsAFK = await collectionParticipants
+    .find({
+      lastStatus: { $lt: Date.now() - 10000 },
+    })
+    .toArray();
+  participantsAFK.forEach((p) => {
+    collectionMessages.insertOne({
+      from: p.name,
+      to: "Todos",
+      text: "sai da sala...",
+      type: "status",
+      time: day,
+    });
+  });
+  await collectionParticipants.deleteMany({
+    lastStatus: { $lt: Date.now() - 10000 },
+  });
+}, 15000);
+
 app.listen(process.env.PORT, () =>
   console.log(`Server running in port: ${process.env.PORT}`)
 );
